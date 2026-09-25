@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SC-03 Risk Profile and Indicators Dashboard | ASML Lithography Equipment</title>
+<script src="xlsx.full.min.js"></script>
+<script src="chart.umd.min.js"></script>
+<script src="data.js"></script>
+<style>
+:root{
+  --bg:#f4f6f9; --card:#ffffff; --ink:#1d2939; --muted:#5b6778; --line:#e3e7ee;
+  --navy:#0b4a8b; --navy2:#0f5fae; --teal:#1fbf8f; --lime:#8cc63f;
+  --low:#1fa55a; --med:#f5c518; --high:#f28c28; --ext:#e04343;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+.wrap{max-width:1320px;margin:0 auto;padding:18px 22px 40px}
+.topbar{height:4px;background:linear-gradient(90deg,var(--navy),var(--teal),var(--lime));border-radius:2px;margin-bottom:14px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+h1{font-size:28px;font-weight:600;margin:0;letter-spacing:-.3px}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--navy);background:var(--navy);color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+.btn.ghost{background:#fff;color:var(--navy)}
+.status{font-size:12px;color:var(--muted)}
+.status b{color:var(--ink)}
+.drop{border:2px dashed var(--navy2);background:#eaf2fb;border-radius:8px;padding:10px;text-align:center;margin-top:12px;display:none;color:var(--navy)}
+.drop.show{display:block}
+.bluf{margin-top:14px;background:var(--navy);color:#fff;border-radius:8px;padding:14px 18px;font-size:14.5px}
+.bluf b{color:#bfe6ff;text-transform:uppercase;letter-spacing:.6px;font-size:12px;display:block;margin-bottom:4px}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;border-top:4px solid var(--navy)}
+.kpi .l{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi .v{font-size:26px;font-weight:700;margin-top:2px}
+.kpi .n{font-size:12px;color:var(--muted)}
+.grid3{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:14px;margin-top:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-width:0}
+.card h2{font-size:17px;font-weight:600;margin:0 0 10px;display:flex;align-items:center;gap:10px}
+.card h2 .ic{width:30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:none}
+.card h2 .ic.t{background:var(--teal)} .card h2 .ic.l{background:var(--lime)}
+.card .hint{font-size:12px;color:var(--muted);margin:-4px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--navy);color:#fff;text-align:left;padding:7px 8px;font-weight:600;font-size:12.5px}
+td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.sel td{background:#eaf2fb}
+tr.clk{cursor:pointer} tr.clk:hover td{background:#f5f8fc}
+.pill{display:inline-block;padding:2px 9px;border-radius:10px;font-size:12px;font-weight:600;color:#1d2939;white-space:nowrap}
+.b-Low{background:#c9efd8} .b-Medium{background:#fff0b0} .b-High{background:#ffd6ad} .b-Extreme{background:#ffc4c4}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.trend{font-weight:700}
+.down{color:var(--low)} .flat{color:#c79a00} .up{color:var(--ext)}
+.chartbox{position:relative;height:250px}
+.chartbox.tall{height:300px}
+.heat{display:grid;grid-template-columns:34px repeat(5,1fr);gap:4px;font-size:12px}
+.heat .c{height:52px;border-radius:4px;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;font-weight:700;position:relative;color:#1d2939}
+.heat .ax{display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:600}
+.chip{background:#fff;border-radius:9px;padding:1px 6px;font-size:11px;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.chip.res{background:#0b4a8b;color:#fff}
+.chip.hl{outline:3px solid #000}
+.seg{display:inline-flex;border:1px solid var(--navy);border-radius:6px;overflow:hidden;margin-bottom:8px}
+.seg button{border:0;background:#fff;color:var(--navy);padding:5px 10px;font-size:12px;cursor:pointer;font-weight:600}
+.seg button.on{background:var(--navy);color:#fff}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+.detail{margin-top:10px;background:#f7f9fc;border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:13px;display:none}
+.detail.show{display:block}
+.detail .row{margin:3px 0}
+.detail .k{color:var(--muted);font-weight:600}
+.scen{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sc{border-radius:8px;padding:12px;border:1px solid var(--line)}
+.sc h3{margin:0 0 6px;font-size:14px}
+.sc.best{background:#effaf3;border-color:#bfe8cf} .sc.base{background:#eef5fc;border-color:#c5dcf2} .sc.worst{background:#fdf0f0;border-color:#f2c9c9}
+.sc p{margin:4px 0;font-size:12.5px}
+.sc .k{font-weight:600;color:var(--muted)}
+.forecast{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.big{font-size:40px;font-weight:800;color:var(--low)}
+.eei li{margin:5px 0}
+.filterbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.filterbar button{border:1px solid var(--line);background:#fff;border-radius:14px;padding:3px 10px;font-size:12px;cursor:pointer}
+.filterbar button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.eeigrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.eeitile{text-align:left;border:1px solid var(--line);background:#fff;border-radius:8px;padding:10px;cursor:pointer;font:inherit;color:inherit;border-top:4px solid var(--teal)}
+.eeitile:hover{background:#f5f8fc}.eeitile.on{background:#eaf2fb;border-color:var(--navy2);border-top-color:var(--navy)}
+.et{font-weight:800;color:var(--navy)}.eq{font-size:12.5px;margin:4px 0 8px;min-height:54px}
+.ec{display:flex;gap:6px;flex-wrap:wrap}.ec span{font-size:11px;background:#eef2f7;border-radius:10px;padding:1px 7px;color:var(--muted)}
+.eeid{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.eh{display:flex;gap:12px;align-items:flex-start}.big2{font-size:22px}.eqf{font-weight:600;font-size:15px}
+.eg{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.eeid h4{margin:14px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--navy)}
+.eeid p{margin:0;font-size:13.5px}
+.tw{overflow-x:auto}.evt td{font-size:12.5px}.evt tr.disc td{color:#98a2b3;text-decoration:line-through}
+.sm{font-size:12px;color:var(--muted)}.gap{color:#b54708;font-size:12.5px}
+.rlink,.slink{border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:13px}
+.rlink{cursor:pointer}.rlink:hover{background:#f5f8fc;border-color:var(--navy2)}
+.slink a{color:var(--navy2)}
+@media (max-width:1000px){.eeigrid{grid-template-columns:1fr 1fr}.eg{grid-template-columns:1fr}}
+footer{margin-top:18px;font-size:12px;color:var(--muted);text-align:center}
+.err{background:#fdecec;color:#8a1c1c;border:1px solid #f3bcbc;padding:10px;border-radius:6px;margin-top:12px;display:none}
+@media (max-width:1000px){.grid3,.grid2,.scen{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"></div>
+  <header>
+    <div>
+      <h1 id="title">Risk Profile and Indicators Dashboard</h1>
+      <div class="sub" id="subtitle">Loading workbook…</div>
+      <div class="sub" id="student"></div>
+    </div>
+    <div class="controls">
+      <input type="file" id="file" accept=".xlsx,.xls" hidden>
+      <button class="btn" id="upload">Load updated Excel file</button>
+      <button class="btn ghost" id="reload">Reload bundled workbook</button>
+      <div class="status" id="status"></div>
+    </div>
+  </header>
+  <div class="drop" id="drop">Drop the updated SC-03_ArcheeOmer.xlsx file here</div>
+  <div class="err" id="err"></div>
+
+  <div class="bluf" id="bluf"><b>Bottom Line Up Front</b><span></span></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="l">Forecast by 6 October</div><div class="v" id="kForecast">–</div><div class="n" id="kConf"></div></div>
+    <div class="kpi" style="border-top-color:var(--ext)"><div class="l">Risks above appetite</div><div class="v" id="kAbove">–</div><div class="n" id="kAppetite"></div></div>
+    <div class="kpi" style="border-top-color:var(--high)"><div class="l">Average inherent score</div><div class="v" id="kInh">–</div><div class="n">Before controls</div></div>
+    <div class="kpi" style="border-top-color:var(--teal)"><div class="l">Average residual score</div><div class="v" id="kRes">–</div><div class="n" id="kDrop"></div></div>
+    <div class="kpi" style="border-top-color:var(--lime)"><div class="l">Evidence used</div><div class="v" id="kEv">–</div><div class="n" id="kEvN"></div></div>
+    <div class="kpi" style="border-top-color:var(--navy2)"><div class="l">Sources checked</div><div class="v" id="kSrc">–</div><div class="n" id="kSrcN"></div></div>
+  </div>
+
+  <div class="grid3">
+    <div class="card">
+      <h2><span class="ic">R</span>Risk Profile</h2>
+      <div class="hint">Click a risk to see its trigger, owner, control and response. Trend shows inherent to residual movement.</div>
+      <div class="filterbar" id="bandFilter"></div>
+      <table id="riskTable"><thead><tr><th>Risk</th><th>Residual Score</th><th>Band</th><th>Trend</th></tr></thead><tbody></tbody></table>
+      <div class="detail" id="riskDetail"></div>
+    </div>
+    <div class="card">
+      <h2><span class="ic t">C</span>Risk Control</h2>
+      <div class="hint">Whether each key control has actually been tested</div>
+      <div class="chartbox"><canvas id="ctlChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2><span class="ic l">E</span>Evidence Reliability</h2>
+      <div class="hint">Admiralty source reliability grade across all evidence items</div>
+      <div class="chartbox"><canvas id="evChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2><span class="ic">I</span>Inherent and Residual Risk Scores</h2>
+      <div class="hint">Score equals likelihood multiplied by impact; dashed line marks the appetite threshold</div>
+      <div class="chartbox tall"><canvas id="scoreChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2><span class="ic t">H</span>Risk Severity Map</h2>
+      <div class="seg" id="heatMode">
+        <button data-m="inherent">Inherent</button><button data-m="residual">Residual</button><button data-m="both" class="on">Mitigation Overlay</button>
+      </div>
+      <div id="heat" class="heat"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--low)"></i>Low</span>
+        <span><i class="sw" style="background:var(--med)"></i>Medium</span>
+        <span><i class="sw" style="background:var(--high)"></i>High</span>
+        <span><i class="sw" style="background:var(--ext)"></i>Extreme</span>
+        <span><i class="chip">R1</i>Inherent position</span>
+        <span><i class="chip res">R1</i>Residual position</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2><span class="ic l">S</span>Scenario Planning</h2>
+    <div class="scen" id="scen"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2><span class="ic">T</span>Technology Exposure Map</h2>
+      <div class="chartbox"><canvas id="techChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2><span class="ic t">A</span>Analysis of Competing Hypotheses</h2>
+      <div class="hint">Count of inconsistent evidence per hypothesis; the fewest inconsistencies wins</div>
+      <div class="chartbox"><canvas id="achChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2><span class="ic">Q</span>Requirement and Essential Elements</h2>
+      <p id="pir" style="margin:0 0 8px;font-weight:600"></p>
+      <div class="hint" style="margin:0">Click an EEI below to open its explanation, grounding, evidence, risks and sources.</div>
+    </div>
+    <div class="card">
+      <h2><span class="ic l">F</span>Forecast</h2>
+      <div class="forecast"><div class="big" id="fcBig">–</div><div><div><span class="k" style="color:var(--muted);font-weight:600">Confidence:</span> <b id="fcConf"></b></div><div style="font-size:12.5px;margin-top:6px" id="fcChange"></div></div></div>
+      <table style="margin-top:10px" id="fcAfter"><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px" id="eeiCard">
+    <h2><span class="ic t">Q</span>Essential Elements of Information</h2>
+    <div class="eeigrid" id="eeis"></div>
+    <div id="eeiDetail" class="eeid"></div>
+  </div>
+
+  <footer>All figures on this page are read live from the Excel workbook. Update the workbook, then load it here or reload, and every panel refreshes.</footer>
+</div>
+
+<script>
+const COLORS={Low:'#1fa55a',Medium:'#f5c518',High:'#f28c28',Extreme:'#e04343'};
+let STATE={heatMode:'both',band:'All',selected:null,data:null,eei:(location.hash.match(/EEI\d+/)||[null])[0]};
+let charts={};
+
+// ---------- workbook helpers ----------
+function rows(wb,test){
+  const name=wb.SheetNames.find(n=>test(n.toLowerCase()));
+  if(!name) return [];
+  return XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:false}).map(r=>r.map(c=>String(c).trim()));
+}
+function table(rs,firstHeader){
+  const hi=rs.findIndex(r=>r[0].toLowerCase()===firstHeader.toLowerCase());
+  if(hi<0) return [];
+  const h=rs[hi]; const out=[];
+  for(let i=hi+1;i<rs.length;i++){
+    const r=rs[i]; if(!r[0]) continue;
+    if(r.slice(1).every(c=>!c)) break; // a note row ends the table
+    const o={}; h.forEach((k,j)=>{ if(k) o[k]=r[j]||''; }); out.push(o);
+  }
+  return out;
+}
+function col(o,...keys){ for(const k of Object.keys(o)){ const kl=k.toLowerCase(); if(keys.some(x=>kl.includes(x))) return o[k]; } return ''; }
+function labelValue(rs,prefix){ const r=rs.find(r=>r[0].toLowerCase().startsWith(prefix)); return r? (r[1]||'') : ''; }
+function num(x){ const n=parseFloat(String(x).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
+
+function parse(wb){
+  const d={};
+  const cover=rows(wb,n=>n==='cover');
+  d.title=(cover.find(r=>r[0])||[''])[0];
+  d.subtitle=(cover.find(r=>r[0].startsWith('Priority Intelligence'))||[''])[0];
+  d.student=(cover.find(r=>r[0].startsWith('Student'))||[''])[0];
+  d.bluf=((cover.find(r=>r[0].toLowerCase().startsWith('bottom line'))||[''])[0]).replace(/^Bottom Line Up Front:\s*/i,'');
+
+  const reg=rows(wb,n=>n.startsWith('d ')||n.includes('risk register'));
+  const note=(reg.find(r=>/appetite/i.test(r[0]))||[''])[0];
+  const m=note.match(/threshold is set at (\d+)/i); d.appetite=m?+m[1]:9;
+  d.bands=[]; const re=/(\d+) to (\d+) (Low|Medium|High|Extreme)/gi; let mm;
+  while((mm=re.exec(note))) d.bands.push({lo:+mm[1],hi:+mm[2],name:mm[3]});
+  if(!d.bands.length) d.bands=[{lo:1,hi:5,name:'Low'},{lo:6,hi:11,name:'Medium'},{lo:12,hi:16,name:'High'},{lo:17,hi:25,name:'Extreme'}];
+  d.risks=table(reg,'Risk Reference').map(o=>({
+    ref:o['Risk Reference'], statement:col(o,'risk statement'), trigger:col(o,'trigger'), owner:col(o,'owner'),
+    iL:num(col(o,'inherent likelihood')), iI:num(col(o,'inherent impact')), iS:num(col(o,'inherent risk score')), iB:col(o,'inherent risk band'),
+    control:col(o,'key control'), tested:col(o,'control tested'),
+    rL:num(col(o,'residual likelihood')), rI:num(col(o,'residual impact')), rS:num(col(o,'residual risk score')), rB:col(o,'residual risk band'),
+    appetite:col(o,'appetite'), response:col(o,'response')
+  })).filter(r=>/^R\d/.test(r.ref));
+  d.risks.forEach(r=>{ if(!r.iS) r.iS=r.iL*r.iI; if(!r.rS) r.rS=r.rL*r.rI; const ok=['Low','Medium','High','Extreme']; if(!ok.includes(r.iB)) r.iB=band(d,r.iS); if(!ok.includes(r.rB)) r.rB=band(d,r.rS); });
+
+  const ev=rows(wb,n=>n.startsWith('c ')||n.includes('evidence'));
+  d.evidence=table(ev,'Reference').map(o=>({ref:o['Reference'],answers:o['Answers']||'',date:o['Date']||'',found:col(o,'what was found'),source:o['Source']||'',rel:col(o,'source reliability'),cred:col(o,'credibility'),verified:col(o,'verified'),second:o['Second Source']||'',verdict:col(o,'verdict')}));
+
+  const src=rows(wb,n=>n.startsWith('b ')||n.includes('source check'));
+  d.sources=table(src,'Reference').map(o=>({ref:o['Reference'],name:o['Source Name']||'',family:col(o,'family'),url:col(o,'web address'),free:col(o,'free'),path:col(o,'navigation'),pub:col(o,'publication'),answers:col(o,'what it answers')}));
+
+  const sc=rows(wb,n=>n.startsWith('e ')||n.includes('scenario'));
+  d.scen=table(sc,'Scenario').map(o=>({name:o['Scenario'],desc:col(o,'description'),trig:col(o,'trigger'),mean:col(o,'means')}));
+
+  const te=rows(wb,n=>n.startsWith('f ')||n.includes('technology'));
+  d.tech=table(te,'Technology').map(o=>({name:o['Technology'],level:col(o,'exposure'),why:col(o,'why')}));
+
+  const sup=rows(wb,n=>n.includes('supplementary'));
+  const achH=sup.findIndex(r=>r[0].toLowerCase().startsWith('evidence, with grade'));
+  d.ach={hyp:[],inc:[],con:[]};
+  if(achH>=0){
+    const h=sup[achH].slice(1).filter(Boolean); d.ach.hyp=h; d.ach.inc=h.map(()=>0); d.ach.con=h.map(()=>0);
+    for(let i=achH+1;i<sup.length;i++){ const r=sup[i]; if(!/^E\d/.test(r[0])) break;
+      h.forEach((_,j)=>{ const v=(r[j+1]||'').toLowerCase(); if(v.startsWith('incons')) d.ach.inc[j]++; else if(v.startsWith('consis')) d.ach.con[j]++; }); }
+  }
+
+  const a=rows(wb,n=>n.startsWith('a ')||n.includes('priority intelligence'));
+  const pi=a.findIndex(r=>r[0].toLowerCase().startsWith('final priority'));
+  d.pir=pi>=0? a[pi+1][0] : '';
+  const eh=a.find(r=>r[0].toLowerCase().startsWith('essential element'))||[];
+  const ci=k=>eh.findIndex(h=>h.toLowerCase().startsWith(k));
+  const g=(r,k)=>{const i=ci(k);return i>0?(r[i]||''):''};
+  d.eeis=a.filter(r=>/^EEI\d/.test(r[0])).map(r=>{
+    const n=r[0].match(/\d+/)[0];
+    const ev=d.evidence.filter(e=>eeiNums(e.answers).includes(n));
+    const srcs=d.sources.filter(x=>eeiNums(x.answers).includes(n));
+    const riskRefs=(g(r,'linked risk').match(/R\d+/g)||[]);
+    return {ref:r[0],n,q:r[1],expl:g(r,'explanation'),ground:g(r,'grounding'),where:g(r,'where'),ev,srcs,
+      risks:riskRefs.map(x=>d.risks.find(k=>k.ref===x)).filter(Boolean)};
+  });
+
+  const h=rows(wb,n=>n.startsWith('h ')||n.includes('forecast'));
+  d.fc={answer:labelValue(h,'by 6 october'),conf:labelValue(h,'confidence'),change:labelValue(h,'what would change'),
+    after:['actual outcome','was the forecast','source used','main reason'].map(p=>{const r=h.find(r=>r[0].toLowerCase().startsWith(p));return r?[r[0],r[1]]:null}).filter(Boolean)};
+  return d;
+}
+function eeiNums(t){ t=String(t); const out=new Set();
+  (t.match(/EEI\s*(\d+)/gi)||[]).forEach(m=>out.add(m.match(/\d+/)[0]));
+  const m=t.match(/Elements? of Information\s+([\d ,and]+)/i); if(m) (m[1].match(/\d+/g)||[]).forEach(x=>out.add(x));
+  return [...out]; }
+function band(d,s){ const b=d.bands.find(b=>s>=b.lo&&s<=b.hi); return b?b.name:'Low'; }
+function short(s,n=7){ const w=s.split(/\s+/); return w.slice(0,n).join(' ')+(w.length>n?'…':''); }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ---------- rendering ----------
+function render(d){
+  STATE.data=d;
+  document.getElementById('title').textContent=d.title? d.title.replace(/^INDIVIDUAL RISK DASHBOARD$/i,'Individual Risk Dashboard: ASML Lithography Equipment'):'Risk Dashboard';
+  document.getElementById('subtitle').textContent=d.subtitle;
+  document.getElementById('student').textContent=d.student;
+  document.querySelector('#bluf span').textContent=d.bluf;
+
+  const R=d.risks, above=R.filter(r=>r.rS>d.appetite);
+  const avg=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length):0;
+  const ai=avg(R.map(r=>r.iS)), ar=avg(R.map(r=>r.rS));
+  set('kForecast',d.fc.answer||'–'); set('kConf','Confidence: '+(d.fc.conf||'–'));
+  set('kAbove',above.length+' of '+R.length); set('kAppetite','Appetite threshold: score above '+d.appetite);
+  set('kInh',ai.toFixed(1)); set('kRes',ar.toFixed(1));
+  set('kDrop',ai? 'Down '+Math.round((1-ar/ai)*100)+'% after controls':'');
+  const used=d.evidence.filter(e=>!/discard/i.test(e.ref)), disc=d.evidence.length-used.length;
+  const conf=used.filter(e=>/^confirmed/i.test(e.verdict)).length;
+  set('kEv',used.length); set('kEvN',conf+' confirmed, '+disc+' discarded');
+  const fams=new Set(d.sources.map(s=>s.family)); set('kSrc',d.sources.length);
+  set('kSrcN',fams.size+' source families, '+d.sources.filter(s=>/^yes/i.test(s.free)).length+' free');
+
+  renderBandFilter(d); renderRiskTable(d); renderDetail(d);
+  renderCharts(d); renderHeat(d); renderScen(d);
+  const pir=document.getElementById('pir'); pir.textContent=d.pir;
+  renderEEI(d);
+  set('fcBig',d.fc.answer||'–'); set('fcConf',d.fc.conf); set('fcChange','<b>What would change this forecast:</b> '+esc(d.fc.change),true);
+  document.querySelector('#fcAfter tbody').innerHTML=d.fc.after.map(a=>`<tr><td style="color:var(--muted)">${esc(a[0])}</td><td>${esc(a[1])}</td></tr>`).join('');
+}
+function renderEEI(d){
+  if(!d.eeis.find(e=>e.ref===STATE.eei)) STATE.eei=(d.eeis[0]||{}).ref;
+  document.getElementById('eeis').innerHTML=d.eeis.map(e=>`<button class="eeitile ${STATE.eei===e.ref?'on':''}" data-e="${esc(e.ref)}">
+    <div class="et">${esc(e.ref)}</div><div class="eq">${esc(short(e.q,14))}</div>
+    <div class="ec"><span>${e.ev.length} evidence</span><span>${e.risks.length} ${e.risks.length===1?"risk":"risks"}</span><span>${e.srcs.length} ${e.srcs.length===1?"source":"sources"}</span></div></button>`).join('');
+  document.querySelectorAll('.eeitile').forEach(b=>b.onclick=()=>{STATE.eei=b.dataset.e;history.replaceState(null,'','#'+b.dataset.e);renderEEI(d);document.getElementById('eeiDetail').scrollIntoView({behavior:'smooth',block:'nearest'});});
+  const e=d.eeis.find(x=>x.ref===STATE.eei); const el=document.getElementById('eeiDetail');
+  if(!e){el.innerHTML='';return;}
+  const grade=v=>`<span class="pill" style="background:${({A:'#d6e6f7',B:'#c9f2e4',C:'#e3f3c8',D:'#ffe0c2',E:'#ffd0d0'})[(v.rel||'').toUpperCase()]||'#eee'}">${esc(v.rel)}${esc(v.cred)}</span>`;
+  const evRows=e.ev.length? e.ev.map(v=>`<tr class="${/discard/i.test(v.ref)?'disc':''}"><td><b>${esc(v.ref)}</b></td><td>${esc(v.date)}</td><td>${esc(v.found)}</td><td>${esc(v.source)}</td><td>${grade(v)}</td><td>${esc(v.verified)}${v.second?'<div class="sm">'+esc(v.second)+'</div>':''}</td><td>${esc(v.verdict)}</td></tr>`).join('')
+     : '<tr><td colspan="7" class="gap">No evidence item in Section C lists this EEI under "Answers".</td></tr>';
+  const rk=e.risks.length? e.risks.map(r=>`<div class="rlink" data-r="${esc(r.ref)}"><b>${esc(r.ref)}</b> <span class="pill b-${esc(r.rB)}">${esc(r.rB)} ${r.rS}</span><div>${esc(r.statement)}</div><div class="sm">Trigger: ${esc(r.trigger)}</div></div>`).join('')
+     : '<div class="gap">No risks linked. Add risk references in the "Linked Risks" column of Section A.</div>';
+  const safeUrl=u=>/^https?:\/\//i.test(u)?u:'#';
+  const sr=e.srcs.length? e.srcs.map(x=>`<div class="slink"><b>${esc(x.ref)}</b> <a href="${esc(safeUrl(x.url))}" target="_blank" rel="noopener">${esc(x.name)}</a> <span class="sm">(${esc(x.family)}, free: ${esc(x.free)})</span><div class="sm">Navigation: ${esc(x.path)}</div><div class="sm">Publication date: ${esc(x.pub)}</div></div>`).join('')
+     : '<div class="gap">No Section B source lists this EEI under "What It Answers".</div>';
+  el.innerHTML=`<div class="eh"><span class="et big2">${esc(e.ref)}</span><div class="eqf">${esc(e.q)}</div></div>
+   <div class="eg">
+     <div><h4>Explanation</h4><p>${esc(e.expl)||'<span class="gap">Add text in the "Explanation" column of Section A.</span>'}</p></div>
+     <div><h4>Grounding</h4><p>${esc(e.ground)||'<span class="gap">Add text in the "Grounding" column of Section A.</span>'}</p></div>
+   </div>
+   <h4>Linked Evidence</h4>
+   <div class="tw"><table class="evt"><thead><tr><th>Reference</th><th>Date</th><th>What Was Found</th><th>Source</th><th>Grade</th><th>Verified by Second Source</th><th>Verdict</th></tr></thead><tbody>${evRows}</tbody></table></div>
+   <div class="eg">
+     <div><h4>Linked Risks</h4>${rk}</div>
+     <div><h4>Sources for this EEI</h4>${sr}${e.where?'<div class="sm" style="margin-top:6px"><b>Where to check:</b> '+esc(e.where)+'</div>':''}</div>
+   </div>`;
+  el.querySelectorAll('.rlink').forEach(x=>x.onclick=()=>{STATE.band='All';STATE.selected=x.dataset.r;renderBandFilter(d);renderRiskTable(d);renderDetail(d);renderHeat(d);document.getElementById('riskTable').scrollIntoView({behavior:'smooth',block:'center'});});
+}
+function set(id,v,html){ const el=document.getElementById(id); if(html) el.innerHTML=v; else el.textContent=v; }
+
+function renderBandFilter(d){
+  const bands=['All','Low','Medium','High','Extreme'];
+  const el=document.getElementById('bandFilter');
+  el.innerHTML=bands.map(b=>`<button class="${STATE.band===b?'on':''}" data-b="${b}">${b==='All'?'All residual bands':b}</button>`).join('');
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{STATE.band=b.dataset.b;renderBandFilter(d);renderRiskTable(d);renderHeat(d);});
+}
+function trend(r){
+  if(r.rS<r.iS) return `<span class="trend down" title="Reduced from ${r.iS} to ${r.rS}">&#9660; ${r.iS-r.rS}</span>`;
+  if(r.rS>r.iS) return `<span class="trend up">&#9650; ${r.rS-r.iS}</span>`;
+  return `<span class="trend flat" title="No reduction">&#9644; 0</span>`;
+}
+function visible(d){ return d.risks.filter(r=>STATE.band==='All'||r.rB===STATE.band); }
+function renderRiskTable(d){
+  const tb=document.querySelector('#riskTable tbody');
+  tb.innerHTML=visible(d).sort((a,b)=>b.rS-a.rS).map(r=>`<tr class="clk ${STATE.selected===r.ref?'sel':''}" data-r="${esc(r.ref)}">
+    <td><b>${esc(r.ref)}</b> ${esc(short(r.statement))}</td><td><span class="dot" style="background:${COLORS[r.rB]||'#999'}"></span>${r.rS}</td>
+    <td><span class="pill b-${esc(r.rB)}">${esc(r.rB)}</span></td><td>${trend(r)}</td></tr>`).join('') || '<tr><td colspan="4" style="color:var(--muted)">No risks in this band</td></tr>';
+  tb.querySelectorAll('tr.clk').forEach(tr=>tr.onclick=()=>{STATE.selected=STATE.selected===tr.dataset.r?null:tr.dataset.r;renderRiskTable(d);renderDetail(d);renderHeat(d);});
+}
+function renderDetail(d){
+  const el=document.getElementById('riskDetail'); const r=d.risks.find(x=>x.ref===STATE.selected);
+  if(!r){el.classList.remove('show');return;}
+  el.classList.add('show');
+  el.innerHTML=`<div class="row"><span class="k">${esc(r.ref)}:</span> ${esc(r.statement)}</div>
+  <div class="row"><span class="k">Trigger event:</span> ${esc(r.trigger)}</div>
+  <div class="row"><span class="k">Risk owner:</span> ${esc(r.owner)}</div>
+  <div class="row"><span class="k">Inherent:</span> Likelihood ${r.iL} × Impact ${r.iI} = ${r.iS} <span class="pill b-${esc(r.iB)}">${esc(r.iB)}</span> &nbsp; <span class="k">Residual:</span> ${r.rL} × ${r.rI} = ${r.rS} <span class="pill b-${esc(r.rB)}">${esc(r.rB)}</span></div>
+  <div class="row"><span class="k">Key control:</span> ${esc(r.control)} <i>(Tested: ${esc(r.tested)})</i></div>
+  <div class="row"><span class="k">Position against appetite:</span> ${esc(r.appetite)}</div>
+  <div class="row"><span class="k">Response strategy:</span> ${esc(r.response)}</div>`;
+}
+function mk(id,cfg){ if(charts[id]) charts[id].destroy(); charts[id]=new Chart(document.getElementById(id),cfg); }
+function renderCharts(d){
+  Chart.defaults.font.family='"Segoe UI",Roboto,Arial,sans-serif'; Chart.defaults.color='#5b6778';
+  // control tested
+  const ct={'Tested':0,'Partially tested':0,'Not tested':0};
+  d.risks.forEach(r=>{const t=r.tested.toLowerCase(); if(t.startsWith('yes')) ct['Tested']++; else if(t.startsWith('partial')) ct['Partially tested']++; else ct['Not tested']++;});
+  mk('ctlChart',{type:'doughnut',data:{labels:Object.keys(ct),datasets:[{data:Object.values(ct),backgroundColor:['#1fbf8f','#8cc63f','#0b4a8b'],borderWidth:2}]},
+    options:{cutout:'58%',maintainAspectRatio:false,plugins:{legend:{position:'right'},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} risk(s)`}}}}});
+  // evidence reliability
+  const g={}; d.evidence.forEach(e=>{const k=(e.rel||'?').toUpperCase(); g[k]=(g[k]||0)+1;});
+  const ks=Object.keys(g).sort();
+  const pal={A:'#0b4a8b',B:'#1fbf8f',C:'#8cc63f',D:'#f28c28',E:'#e04343',F:'#98a2b3'};
+  mk('evChart',{type:'doughnut',data:{labels:ks.map(k=>'Grade '+k),datasets:[{data:ks.map(k=>g[k]),backgroundColor:ks.map(k=>pal[k]||'#999'),borderWidth:2}]},
+    options:{cutout:'58%',maintainAspectRatio:false,plugins:{legend:{position:'right'}}}});
+  // scores
+  const R=[...d.risks];
+  mk('scoreChart',{type:'bar',data:{labels:R.map(r=>r.ref),datasets:[
+      {label:'Inherent score',data:R.map(r=>r.iS),backgroundColor:R.map(r=>COLORS[r.iB]+'99'),borderColor:R.map(r=>COLORS[r.iB]),borderWidth:1},
+      {label:'Residual score',data:R.map(r=>r.rS),backgroundColor:R.map(r=>COLORS[r.rB]),borderWidth:0}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:{min:0,max:25,title:{display:true,text:'Risk score (1 to 25)'}}},
+      plugins:{tooltip:{callbacks:{afterLabel:c=>short(R[c.dataIndex].statement,10)}}}},
+    plugins:[{id:'appetite',afterDraw(ch){const x=ch.scales.x.getPixelForValue(d.appetite),y=ch.chartArea;const c=ch.ctx;c.save();c.setLineDash([6,4]);c.strokeStyle='#e04343';c.lineWidth=2;c.beginPath();c.moveTo(x,y.top);c.lineTo(x,y.bottom);c.stroke();c.fillStyle='#e04343';c.font='600 11px Segoe UI';c.fillText('Appetite '+d.appetite,x+4,y.top+10);c.restore();}}]});
+  // tech exposure
+  const lv=s=>{s=s.toLowerCase(); if(s.includes('medium to high')) return 3.5; if(s.includes('low to medium')) return 1.5; if(s.includes('high')) return 4; if(s.includes('medium')) return 2.5; if(s.includes('low')) return 1; return 0;};
+  const tcol=v=>v>=4?'#e04343':v>=3.5?'#f28c28':v>=2.5?'#f5c518':'#1fa55a';
+  mk('techChart',{type:'bar',data:{labels:d.tech.map(t=>short(t.name,5)),datasets:[{label:'Exposure level',data:d.tech.map(t=>lv(t.level)),backgroundColor:d.tech.map(t=>tcol(lv(t.level)))}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>d.tech[c.dataIndex].level,afterLabel:c=>short(d.tech[c.dataIndex].why,12)}}},
+      scales:{x:{min:0,max:4,ticks:{stepSize:1,callback:v=>['','Low','','','High'][v]||''}}}}});
+  // ACH
+  mk('achChart',{type:'bar',data:{labels:d.ach.hyp.map(h=>h.replace(/^Hypothesis (\d):\s*/,'H$1: ')),datasets:[
+      {label:'Inconsistent',data:d.ach.inc,backgroundColor:'#e04343'},{label:'Consistent',data:d.ach.con,backgroundColor:'#1fbf8f'}]},
+    options:{maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{stepSize:1},title:{display:true,text:'Evidence items'}}}}});
+}
+function cellColor(d,s){ return {Low:'#bfe8cf',Medium:'#ffe98a',High:'#ffc58f',Extreme:'#ff9f9f'}[band(d,s)]; }
+function renderHeat(d){
+  const el=document.getElementById('heat'); let h='';
+  const vis=visible(d);
+  for(let L=5;L>=1;L--){
+    h+=`<div class="ax">${L}</div>`;
+    for(let I=1;I<=5;I++){
+      let chips='';
+      vis.forEach(r=>{
+        const hl=STATE.selected===r.ref?' hl':'';
+        if(STATE.heatMode!=='residual' && r.iL===L && r.iI===I) chips+=`<span class="chip${hl}" title="${esc(r.ref)} inherent">${esc(r.ref)}</span>`;
+        if(STATE.heatMode!=='inherent' && r.rL===L && r.rI===I) chips+=`<span class="chip res${hl}" title="${esc(r.ref)} residual">${esc(r.ref)}</span>`;
+      });
+      h+=`<div class="c" style="background:${cellColor(d,L*I)}" title="Likelihood ${L} × Impact ${I} = ${L*I}">${chips}</div>`;
+    }
+  }
+  h+=`<div></div>`+[1,2,3,4,5].map(i=>`<div class="ax">${i}</div>`).join('');
+  h+=`<div></div><div class="ax" style="grid-column:span 5">Impact →</div>`;
+  el.innerHTML=`<div class="ax" style="grid-column:1/-1;justify-content:flex-start">Likelihood ↑</div>`+h;
+}
+function renderScen(d){
+  const cls=n=>/best/i.test(n)?'best':/worst/i.test(n)?'worst':'base';
+  document.getElementById('scen').innerHTML=d.scen.map(s=>`<div class="sc ${cls(s.name)}"><h3>${esc(s.name)}</h3>
+    <p>${esc(s.desc)}</p><p><span class="k">Trigger sign:</span> ${esc(s.trig)}</p><p><span class="k">Resolution:</span> ${esc(s.mean)}</p></div>`).join('');
+}
+document.querySelectorAll('#heatMode button').forEach(b=>b.onclick=()=>{
+  STATE.heatMode=b.dataset.m; document.querySelectorAll('#heatMode button').forEach(x=>x.classList.toggle('on',x===b)); renderHeat(STATE.data);});
+
+// ---------- loading ----------
+function load(buf,label){
+  try{
+    const wb=XLSX.read(buf,{type:'array'});
+    render(parse(wb));
+    document.getElementById('err').style.display='none';
+    document.getElementById('status').innerHTML=`Data source: <b>${esc(label)}</b><br>Loaded ${new Date().toLocaleString()}`;
+  }catch(e){ showErr('Could not read this workbook: '+e.message+'. Keep the sheet names and column headings the same as the original file.'); }
+}
+function showErr(m){ const e=document.getElementById('err'); e.textContent=m; e.style.display='block'; }
+async function loadBundled(){
+  try{
+    const r=await fetch('SC-03_ArcheeOmer.xlsx?t='+Date.now(),{cache:'no-store'});
+    if(!r.ok) throw new Error(r.status);
+    load(await r.arrayBuffer(),'SC-03_ArcheeOmer.xlsx');
+  }catch(e){
+    if(window.EMBEDDED_XLSX){ const b=Uint8Array.from(atob(window.EMBEDDED_XLSX),c=>c.charCodeAt(0)); load(b.buffer,'SC-03_ArcheeOmer.xlsx (embedded copy)'); }
+    else showErr('Workbook not found. Use "Load updated Excel file".');
+  }
+}
+const fi=document.getElementById('file');
+document.getElementById('upload').onclick=()=>fi.click();
+fi.onchange=()=>{ const f=fi.files[0]; if(f) f.arrayBuffer().then(b=>load(b,f.name)); fi.value=''; };
+document.getElementById('reload').onclick=loadBundled;
+const drop=document.getElementById('drop');
+window.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('show');});
+window.addEventListener('dragleave',e=>{ if(e.target===drop||!e.relatedTarget) drop.classList.remove('show'); });
+window.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('show');const f=e.dataTransfer.files[0];if(f) f.arrayBuffer().then(b=>load(b,f.name));});
+loadBundled();
+</script>
+<script data-pplx-inline-edit>
+(function () {
+  if (window === window.top) return;
+
+  const allowedParentOrigins = ["https://www.perplexity.ai","https://perplexity.ai","https://testing.perplexity.ai","https://staging.perplexity.ai","https://*.preview.i.perplexity.ai","http://perplexity.localhost","http://localhost:1420","http://127.0.0.1:1420","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"];
+  const MAX_FONT_BYTES = 500 * 1024;
+  const MAX_TOTAL_FONT_BYTES = 2 * 1024 * 1024;
+  let scrollForwarding = false;
+  let scrollRaf = 0;
+  let trustedTopOrigin = null;
+
+  // Allow entries like "https://*.preview.i.perplexity.ai" — the wildcard
+  // matches a single DNS label (no dots), so "https://*.foo" cannot stretch
+  // across multiple labels.
+  function matchesAllowedOrigin(origin) {
+    if (!origin) return false;
+    for (const entry of allowedParentOrigins) {
+      if (!entry.includes("*")) {
+        if (entry === origin) return true;
+        continue;
+      }
+      const pattern = new RegExp(
+        "^" +
+          entry.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") +
+          "$",
+      );
+      if (pattern.test(origin)) return true;
+    }
+    return false;
+  }
+
+  // Trust decision: when the sender is same-origin-visible (event.origin is a
+  // real origin like https://www.perplexity.ai) we trust event.origin directly.
+  // When event.origin is "null" (opaque broker srcdoc), we fall back to the
+  // broker's stamped `parentOrigin` to identify the top window. The fallback
+  // is claim-only — we rely on the browser's native `targetOrigin` enforcement
+  // on the response path (see postToTrustedTop) to ensure replies can't be
+  // delivered to anyone but the actual top window of that claimed origin.
+  function getTrustedParentOrigin(event) {
+    const forwardedParentOrigin =
+      typeof event.data.parentOrigin === "string" ? event.data.parentOrigin : null;
+    const parentOrigin = event.origin === "null" ? forwardedParentOrigin : event.origin;
+    return matchesAllowedOrigin(parentOrigin) ? parentOrigin : null;
+  }
+
+  // All responses go to window.top with targetOrigin = the allowlisted origin.
+  // An attacker that iframes us inside their own null-origin broker can claim
+  // any parentOrigin they like, but the browser will drop the reply whenever
+  // the real top's origin doesn't match — so the screenshot never leaves.
+  function postToTrustedTop(message) {
+    if (!trustedTopOrigin) return;
+    try {
+      window.top.postMessage(message, trustedTopOrigin);
+    } catch (_error) {}
+  }
+
+  function inlineAll(original, clone) {
+    if (original.nodeType !== 1 || clone.nodeType !== 1) return;
+
+    try {
+      const computedStyle = getComputedStyle(original);
+      // cssText on a computed style is the serialized declaration in modern
+      // Chromium/Safari — a single read beats enumerating ~400 longhand
+      // properties. Firefox returns "" here, so we fall back on empty.
+      const serialized = computedStyle.cssText;
+      if (serialized) {
+        clone.style.cssText = serialized;
+      } else {
+        const parts = new Array(computedStyle.length);
+        for (let index = 0; index < computedStyle.length; index += 1) {
+          const property = computedStyle[index];
+          parts[index] = `${property}:${computedStyle.getPropertyValue(property)};`;
+        }
+        clone.style.cssText = parts.join("");
+      }
+    } catch (_error) {}
+
+    const originalChildren = original.children;
+    const clonedChildren = clone.children;
+    for (
+      let index = 0;
+      index < originalChildren.length && index < clonedChildren.length;
+      index += 1
+    ) {
+      inlineAll(originalChildren[index], clonedChildren[index]);
+    }
+  }
+
+  function extractFontUrl(srcValue) {
+    const matches = [
+      ...srcValue.matchAll(
+        /url\(["']?([^"')]+)["']?\)(?:\s*format\(["']?([^"')]+)["']?\))?/gi,
+      ),
+    ];
+    if (matches.length === 0) return null;
+    const woff2 = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff2"));
+    if (woff2) return woff2[1];
+    const woff = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff"));
+    if (woff) return woff[1];
+    return matches[0][1];
+  }
+
+  // Cache resolved font URL -> data URI across captures. Fonts on a page
+  // essentially never change, and a batch run emits multiple captures back to
+  // back — without this we'd refetch + re-base64 every time.
+  const fontDataUriCache = new Map();
+  const SRC_DECLARATION_RE = /src\s*:\s*[^;}]+/i;
+
+  async function fetchAsDataUri(url) {
+    if (fontDataUriCache.has(url)) return fontDataUriCache.get(url);
+    let dataUri = null;
+    try {
+      const response = await fetch(url, { mode: "cors", credentials: "omit" });
+      if (response.ok) {
+        const blob = await response.blob();
+        if (blob.size <= MAX_FONT_BYTES) {
+          dataUri = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () =>
+              resolve(typeof reader.result === "string" ? reader.result : null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+    } catch (_error) {
+      dataUri = null;
+    }
+    fontDataUriCache.set(url, dataUri);
+    return dataUri;
+  }
+
+  function collectFontFaceRuleTexts() {
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      let cssRules;
+      try {
+        cssRules = sheet.cssRules;
+      } catch (_error) {
+        continue;
+      }
+      if (!cssRules) continue;
+      for (const rule of cssRules) {
+        const cssText = rule.cssText || "";
+        if (cssText.startsWith("@font-face")) rules.push(cssText);
+      }
+    }
+    return rules;
+  }
+
+  async function buildInlinedFontCss() {
+    const ruleTexts = collectFontFaceRuleTexts();
+    if (ruleTexts.length === 0) return null;
+
+    const resolved = ruleTexts.map((cssText) => {
+      if (!SRC_DECLARATION_RE.test(cssText)) return null;
+      const srcMatch = cssText.match(/src\s*:\s*([^;}]+)[;}]/i);
+      if (!srcMatch) return null;
+      const url = extractFontUrl(srcMatch[1]);
+      if (!url) return null;
+      try {
+        return { cssText, url: new URL(url, document.baseURI).href };
+      } catch (_error) {
+        return null;
+      }
+    });
+
+    const dataUris = await Promise.all(
+      resolved.map((entry) => (entry ? fetchAsDataUri(entry.url) : Promise.resolve(null))),
+    );
+
+    const inlined = [];
+    let totalBytes = 0;
+    for (let index = 0; index < resolved.length; index += 1) {
+      const entry = resolved[index];
+      const dataUri = dataUris[index];
+      if (!entry || !dataUri) continue;
+      const approxBytes = dataUri.length * 0.75;
+      if (totalBytes + approxBytes > MAX_TOTAL_FONT_BYTES) break;
+      totalBytes += approxBytes;
+      inlined.push(entry.cssText.replace(SRC_DECLARATION_RE, `src: url("${dataUri}")`));
+    }
+    return inlined.length > 0 ? inlined.join("\n") : null;
+  }
+
+  function stripExternal(clone) {
+    const images = clone.querySelectorAll("img");
+    for (let index = 0; index < images.length; index += 1) {
+      const src = images[index].getAttribute("src");
+      if (src && !src.startsWith("data:")) images[index].removeAttribute("src");
+    }
+
+    const elements = clone.querySelectorAll("*");
+    for (let index = 0; index < elements.length; index += 1) {
+      const style = elements[index].style.cssText;
+      if (style && style.includes("url(")) {
+        elements[index].style.cssText = style.replace(
+          /url\(["']?(?!data:)[^)"']*["']?\)/gi,
+          "none",
+        );
+      }
+    }
+  }
+
+  function emitScroll() {
+    scrollRaf = 0;
+    if (!scrollForwarding) return;
+    postToTrustedTop({
+      type: "INLINE_EDIT_SCROLL",
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    });
+  }
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (!scrollForwarding || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(emitScroll);
+    },
+    { passive: true, capture: true },
+  );
+
+  async function handleCaptureRequest(event) {
+    const requestId = event.data.requestId;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    function postResult(dataUrl) {
+      postToTrustedTop({
+        type: "INLINE_EDIT_SCREENSHOT_RESULT",
+        requestId,
+        dataUrl,
+        scrollX,
+        scrollY,
+      });
+    }
+
+    try {
+      // Wait for any pending web fonts to resolve so both inline metrics and
+      // the @font-face inlining below see the same loaded faces.
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch (_error) {}
+      }
+
+      const clone = document.documentElement.cloneNode(true);
+      inlineAll(document.documentElement, clone);
+
+      const removedNodes = clone.querySelectorAll("script,link[rel=\"stylesheet\"],style");
+      for (let index = 0; index < removedNodes.length; index += 1) {
+        removedNodes[index].remove();
+      }
+
+      stripExternal(clone);
+
+      // Re-embed web fonts as data-URI @font-face rules so the SVG rasterizer
+      // can resolve them — external font URLs aren't fetched during
+      // foreignObject rendering, which would otherwise force a fallback face
+      // and change text metrics.
+      const inlinedFontCss = await buildInlinedFontCss();
+      if (inlinedFontCss) {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = inlinedFontCss;
+        const head = clone.querySelector("head");
+        if (head) head.appendChild(styleEl);
+        else clone.insertBefore(styleEl, clone.firstChild);
+      }
+
+      const html = new XMLSerializer().serializeToString(clone);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+        '<foreignObject width="100%" height="100%">' +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">` +
+        `<div style="position:relative;left:-${scrollX}px;top:-${scrollY}px">` +
+        html +
+        "</div></div></foreignObject></svg>";
+      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const image = new Image();
+      image.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(image, 0, 0);
+        postResult(canvas.toDataURL("image/png"));
+      };
+      image.onerror = function () {
+        postResult(null);
+      };
+      image.src = svgUrl;
+    } catch (_error) {
+      postResult(null);
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (!event.data) return;
+    // Only accept messages from the direct parent frame. Blocks sibling /
+    // unrelated-window postMessage senders that could otherwise reach us.
+    if (event.source !== window.parent) return;
+
+    const trustedParentOrigin = getTrustedParentOrigin(event);
+    if (!trustedParentOrigin) return;
+    trustedTopOrigin = trustedParentOrigin;
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_START") {
+      scrollForwarding = true;
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_STOP") {
+      scrollForwarding = false;
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
+      return;
+    }
+
+    if (event.data.type !== "INLINE_EDIT_CAPTURE_REQUEST") return;
+
+    handleCaptureRequest(event);
+  });
+})();
+
+
+</script></body>
+</html>
